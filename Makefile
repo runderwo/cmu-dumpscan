@@ -28,9 +28,13 @@ AR         = ar
 COMPILE_ET = compile_et
 RANLIB     = ranlib
 
+AFSLIBS = /usr/local/lib/afs
+
 # On Linux:
 ifeq ($(shell uname),Linux)
-R=-Wl,-rpath,
+R        = -Wl,-rpath,
+AFSLIBS  = /usr/lib/afs
+XLIBS    = -lresolv
 endif
 
 # On Solaris:
@@ -43,12 +47,12 @@ endif
 DEBUG      = -g
 INCLUDES   = -I/usr/local/include
 CFLAGS     = $(DEBUG) $(INCLUDES)
-LDFLAGS    = -L. -L/usr/local/lib $(R)/usr/local/lib -L/usr/local/lib/afs $(XLDFLAGS)
+LDFLAGS    = -L. -L/usr/local/lib $(R)/usr/local/lib -L$(AFSLIBS) $(XLDFLAGS)
 
 LIBS                 = -ldumpscan -lxfiles \
-                       -lauth -laudit -lvolser -lvldb -lubik -lrxkad \
-                       /usr/local/lib/afs/libsys.a -lrx -llwp \
-                       /usr/local/lib/afs/util.a -lcom_err $(XLIBS)
+                       -lauth -laudit -lvolser -lvldb -lubik -lrxkad -lafscom_err \
+                       $(AFSLIBS)/libsys.a -lrx -llwp \
+                       $(AFSLIBS)/util.a -lcom_err $(XLIBS)
 OBJS_afsdump_scan    = afsdump_scan.o repair.o
 OBJS_afsdump_xsed    = afsdump_xsed.o repair.o
 OBJS_libxfiles.a     = xfiles.o xfopen.o xf_errs.o xf_printf.o int64.o \
