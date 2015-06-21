@@ -44,7 +44,7 @@ XLDFLAGS = -L/usr/ucblib -R/usr/ucblib
 XLIBS    = -lsocket -lnsl -lucb -lresolv
 endif
 
-DEBUG      = -g
+DEBUG      = -g -W -Wall -pedantic -Wno-unused-parameter -Wno-parentheses -Wno-unused-parameter -Wno-implicit-function-declaration
 INCLUDES   = -I/usr/local/include
 CFLAGS     = $(DEBUG) $(INCLUDES)
 LDFLAGS    = -L. -L/usr/local/lib $(R)/usr/local/lib -L$(AFSLIBS) $(XLDFLAGS)
