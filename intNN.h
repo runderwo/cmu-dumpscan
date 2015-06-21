@@ -116,8 +116,8 @@ typedef struct { afs_uint32 hi, lo; } u_int64;
   )
 #define add64_64(X,A,B) (add64_32(X,A,(B).lo), (X).hi += (B).hi)
 
-#define sub64_32(X,A,B) ((X).lo = (A).lo - (B), \
-                         (X).hi = (A).hi - ((A).lo < (B)))
+#define sub64_32(X,A,B) ((X).hi = (A).hi - ((A).lo < (B)), \
+                         (X).lo = (A).lo - (B))
 #define sub64_64(X,A,B) (sub64_32(X,A,(B).lo), (X).hi -= (B).hi)
 
 /* Byte-order */
