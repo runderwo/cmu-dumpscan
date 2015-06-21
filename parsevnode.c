@@ -62,6 +62,7 @@ static tagged_field vnode_fields[] = {
   { VTAG_SERVER_DATE, DKIND_TIME,    " Server Date:  ", store_vnode, 0, 0 },
   { VTAG_ACL,         DKIND_SPECIAL, " xxxxxxxx ACL: ", parse_acl,   0, 0 },
   { VTAG_DATA,        DKIND_SPECIAL, " Contents:     ", parse_vdata, 0, 0 },
+  { VTAG_LONGDATA,    DKIND_SPECIAL, " Contents:     ", parse_vdata, 0, 0 },
   { 0,0,0,0,0,0 }};
 
 
@@ -380,26 +381,38 @@ static afs_uint32 parse_vdata(XFILE *X, unsigned char *tag, tagged_field *field,
   dump_parser *p = (dump_parser *)g_refcon;
   afs_uint32 (*cb)(afs_vnode *, XFILE *, void *);
   afs_vnode *v = (afs_vnode *)l_refcon;
-  afs_uint32 r;
+  afs_uint32 r, hi, lo;
   int used = 0;
 
-  if (r = ReadInt32(X, &v->size)) return r;
+  if (*tag == VTAG_DATA) {
+    hi = 0;
+    if (r = ReadInt32(X, &lo)) return r;
+  } else if (*tag == VTAG_LONGDATA) {
+    if (r = ReadInt32(X, &hi)) return r;
+    if (r = ReadInt32(X, &lo)) return r;
+  }
+  mk64(v->size, hi, lo);
   v->field_mask |= F_VNODE_SIZE;
 
-  if (v->size) {
+  if (!zero64(v->size)) {
     v->field_mask |= F_VNODE_DATA;
     if (r = xftell(X, &v->d_offset)) return r;
     if (p->print_flags & DSPRINT_VNODE)
-      printf("%s%d (0x%08x) bytes at %s (0x%s)\n", field->label,
-             v->size, v->size, decimate_int64(&v->d_offset, 0),
-             hexify_int64(&v->d_offset, 0));
+      printf("%s%s (0x%s) bytes at %s (0x%s)\n", field->label,
+             decimate_int64(&v->size, 0), hexify_int64(&v->size, 0),
+             decimate_int64(&v->d_offset, 0), hexify_int64(&v->d_offset, 0));
     
     switch (v->type) {
       case vSymlink:
-        v->link_target = (char *)malloc(v->size + 1);
+        if (hi64(v->size) > 0) {
+           (p->cb_error)(EOVERFLOW, 0, p->err_refcon,
+                         "Size of symlink target >= 4G");
+           break;
+        }
+        v->link_target = (char *)malloc(lo64(v->size) + 1);
         if (v->link_target) {
-          if (r = xfread(X, v->link_target, v->size)) return r;
-          v->link_target[v->size] = 0;
+          if (r = xfread(X, v->link_target, lo64(v->size))) return r;
+          v->link_target[lo64(v->size)] = 0;
           v->field_mask |= F_VNODE_LINK_TARGET;
           used++;
           if (p->print_flags & DSPRINT_VNODE)
@@ -440,7 +453,15 @@ static afs_uint32 parse_vdata(XFILE *X, unsigned char *tag, tagged_field *field,
   }
 
   if (!used) {
-    if ((r = xfskip(X, v->size))) return r;
+    u_int64 remain = v->size;
+    while (!zero64(remain)) {
+      afs_uint32 skip = UINT32_MAX;
+      if (hi64(remain) == 0) {
+        skip = lo64(remain);
+      }
+      if ((r = xfskip(X, skip))) return r;
+      sub64_32(remain, remain, skip);
+    }
   }
 
   if (p->repair_flags & DSFIX_VDSYNC) {

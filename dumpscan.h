@@ -191,7 +191,7 @@ typedef struct {
   afs_uint16 mode;             /* UNIX mode bits */
   afs_uint32 client_date;      /* Last modified date from client */
   afs_uint32 server_date;      /* Last modified date on server */
-  afs_uint32 size;             /* Size of data */
+  u_int64 size;                /* Size of data */
   u_int64 d_offset;            /* Where in the input stream is the data? */
   char *link_target;           /* Target of symbolic link */
   unsigned char acl[SIZEOF_LARGEDISKVNODE - SIZEOF_SMALLDISKVNODE];
@@ -310,7 +310,7 @@ typedef struct vhash_ent {
   afs_uint32 parent;            /* Parent VNode number */
   u_int64 v_offset;          /* Offset to start of vnode */
   u_int64 d_offset;          /* Offset to data (0 if none) */
-  afs_uint32 d_size;            /* Size of data */
+  u_int64 d_size;            /* Size of data */
 } vhash_ent;
 typedef struct {
   afs_uint32 n_vnodes;          /* Number of vnodes in volume */
@@ -361,8 +361,8 @@ extern afs_uint32 ParseVNode(XFILE *, dump_parser *);
 
 
 /* directory.c - Directory parsing, lookup, and generation */
-extern afs_uint32 ParseDirectory(XFILE *, dump_parser *, afs_uint32, int);
-extern afs_uint32 DirectoryLookup(XFILE *, dump_parser *, afs_uint32,
+extern afs_uint32 ParseDirectory(XFILE *, dump_parser *, u_int64, int);
+extern afs_uint32 DirectoryLookup(XFILE *, dump_parser *, u_int64,
                            char **, afs_uint32 *, afs_uint32 *);
 extern afs_uint32 Dir_Init(dir_state **);
 extern afs_uint32 Dir_AddEntry(dir_state *, char *, afs_uint32, afs_uint32);

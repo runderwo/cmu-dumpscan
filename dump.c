@@ -208,17 +208,24 @@ afs_uint32 DumpVNodeData(XFILE *OX, char *buf, afs_uint32 size)
 }
 
 
-afs_uint32 CopyVNodeData(XFILE *OX, XFILE *X, afs_uint32 size)
+afs_uint32 CopyVNodeData(XFILE *OX, XFILE *X, u_int64 size)
 {
   afs_uint32 r, n;
   static char buf[COPYBUFSIZE];
 
-  if (r = WriteTagInt32(OX, VTAG_DATA, size)) return r;
-  while (size) {
-    n = (size > COPYBUFSIZE) ? COPYBUFSIZE : size;
+  if (hi64(size) != 0 &&
+      (r = WriteTagInt32Pair(OX, VTAG_LONGDATA, hi64(size), lo64(size))))
+    return r;
+  else if ((r = WriteTagInt32(OX, VTAG_DATA, lo64(size))))
+    return r;
+
+  while (!zero64(size)) {
+    u_int64 copy_buf_size;
+    set64(copy_buf_size, COPYBUFSIZE);
+    n = (gt64(size, copy_buf_size)) ? COPYBUFSIZE : UINT32_MAX;
     if (r = xfread(X, buf, n)) return r;
     if (r = xfwrite(OX, buf, n)) return r;
-    size -= n;
+    sub64_32(size, size, n);
   }
   return 0;
 }

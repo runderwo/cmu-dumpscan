@@ -86,7 +86,7 @@ static void fixup(char *name, int l)
 }
 
 afs_uint32 parse_directory(XFILE *X, dump_parser *p, afs_vnode *v,
-                        afs_uint32 size, int toeof)
+                        u_int64 size, int toeof)
 {
   afs_dir_entry de;
   int pgno, i, j, l, n;
@@ -98,7 +98,8 @@ afs_uint32 parse_directory(XFILE *X, dump_parser *p, afs_vnode *v,
     printf("  ========== ==========  ==============================\n");
   }
   if ((p->flags & DSFLAG_SEEK) && (r = xftell(X, &where))) return r;
-  for (pgno = 0; toeof || size; pgno++, size -= (toeof ? 0 : AFS_PAGESIZE)) {
+  for (pgno = 0; toeof || !zero64(size);
+                 pgno++, sub64_32(size, size, (toeof ? 0 : AFS_PAGESIZE))) {
     if ((p->flags & DSFLAG_SEEK) && (r = xfseek(X, &where))) return r;
     if (r = xfread(X, &page, AFS_PAGESIZE)) {
       if (toeof && r == ERROR_XFILE_EOF) break;
@@ -151,11 +152,11 @@ afs_uint32 parse_directory(XFILE *X, dump_parser *p, afs_vnode *v,
 }
 
 
-afs_uint32 ParseDirectory(XFILE *X, dump_parser *p, afs_uint32 size, int toeof)
+afs_uint32 ParseDirectory(XFILE *X, dump_parser *p, u_int64 size, int toeof)
 {
   afs_uint32 r;
 
-  r = parse_directory(X, p, 0, size, toeof);
+  return parse_directory(X, p, 0, size, toeof);
 }
 
 
@@ -199,7 +200,7 @@ static afs_uint32 dirlookup_cb(afs_vnode *v, afs_dir_entry *de,
  * and size set to the length of the directory.
  * Returns 0 on success, whether or not the entry is found.
  */
-afs_uint32 DirectoryLookup(XFILE *X, dump_parser *p, afs_uint32 size,
+afs_uint32 DirectoryLookup(XFILE *X, dump_parser *p, u_int64 size,
                     char **name, afs_uint32 *vnode, afs_uint32 *vuniq)
 {
   dump_parser my_p;

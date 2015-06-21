@@ -256,16 +256,18 @@ static int usevnode(XFILE *X, afs_uint32 vnum, char *vnodepath)
 }
 
 
-static int copyfile(XFILE *in, XFILE *out, int size)
+static afs_uint32 copyfile(XFILE *in, XFILE *out, u_int64 size)
 {
   static char buf[COPYBUFSIZE];
-  int nr, nw, r;
+  afs_uint32 nr, r;
 
-  while (size) {
-    nr = (size > COPYBUFSIZE) ? COPYBUFSIZE : size;
+  while (!zero64(size)) {
+    u_int64 copy_buf_size;
+    set64(copy_buf_size, COPYBUFSIZE);
+    nr = (gt64(size, copy_buf_size)) ? COPYBUFSIZE : UINT32_MAX;
     if (r = xfread(in, buf, nr)) return r;
     if (r = xfwrite(out, buf, nr)) return r;
-    size -= nr;
+    sub64_32(size, size, nr);
   }
   return 0;
 }
@@ -316,12 +318,14 @@ static afs_uint32 directory_cb(afs_vnode *v, XFILE *X, void *refcon)
   /* Print it out */
   if (verbose) {
     if (use_vnum) 
-      printf("d%s %3d %-11d %11d %s #%d:%d\n",
-             modestr(v->mode), v->nlinks, v->owner, v->size,
+      printf("d%s %3d %-11d %11d.%11d %s #%d:%d\n",
+             modestr(v->mode), v->nlinks, v->owner,
+             hi64(v->size), lo64(v->size),
              datestr(v->server_date), v->vnode, v->vuniq);
     else
-      printf("d%s %3d %-11d %11d %s %s\n",
-             modestr(v->mode), v->nlinks, v->owner, v->size,
+      printf("d%s %3d %-11d %11d %11d %s %s\n",
+             modestr(v->mode), v->nlinks, v->owner,
+             hi64(v->size), lo64(v->size),
              datestr(v->server_date), vnodepath);
   }
   else if (!quiet && !use_vnum)
@@ -377,8 +381,9 @@ static afs_uint32 file_cb(afs_vnode *v, XFILE *X, void *refcon)
 
   /* Print it out */
   if (verbose) {
-    printf("-%s %3d %-11d %11d %s %s\n",
-           modestr(v->mode), v->nlinks, v->owner, v->size,
+    printf("-%s %3d %-11d %11d %11d %s %s\n",
+           modestr(v->mode), v->nlinks, v->owner,
+           hi64(v->size), lo64(v->size),
            datestr(v->server_date), vnodepath);
   } else if (!quiet) {
     printf("%s\n", vnodepath);
@@ -432,24 +437,28 @@ static afs_uint32 symlink_cb(afs_vnode *v, XFILE *X, void *refcon)
     vnodepath = vnpx;
   }
 
-  if (!(linktarget = (char *)malloc(v->size + 1))) {
+  if (hi64(v->size) != 0) {
+    fprintf(stderr, "Symlink size >= 4GB not supported!\n");
+    abort();
+  }
+  if (!(linktarget = (char *)malloc(lo64(v->size) + 1))) {
     if (!use_vnum && use != 2) free(vnodepath);
     return DSERR_MEM;
   }
   if ((r = xftell(X, &where))
   ||  (r = xfseek(X, &v->d_offset))
-  ||  (r = xfread(X, linktarget, v->size))) {
+  ||  (r = xfread(X, linktarget, lo64(v->size)))) {
     if (!use_vnum && use != 2) free(vnodepath);
     free(linktarget);
     return r;
   }
   xfseek(X, &where);
-  linktarget[v->size] = 0;
+  linktarget[lo64(v->size)] = 0;
 
   /* Print it out */
   if (verbose)
     printf("l%s %3d %-11d %11d %s %s -> %s\n",
-           modestr(v->mode), v->nlinks, v->owner, v->size,
+           modestr(v->mode), v->nlinks, v->owner, lo64(v->size),
            datestr(v->server_date), vnodepath, linktarget);
   else if (!quiet)
     printf("%s\n", vnodepath);

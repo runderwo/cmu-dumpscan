@@ -218,7 +218,8 @@ afs_uint32 repair_vnode_cb(afs_vnode *v, XFILE *X, void *refcon)
   afs_uint32 r, field_mask = v->field_mask;
 
   if ((v->vnode & 1) && !field_mask) {
-    if (RV) fprintf(stderr, ">>> VNODE %d is directory but has no fields?\n");
+    if (RV) fprintf(stderr, ">>> VNODE %d is directory but has no fields?\n",
+            v->vnode);
     v->type = vDirectory;
     v->field_mask |= F_VNODE_TYPE;
     field_mask = F_VNODE_TYPE; /* Messy! */
@@ -283,11 +284,12 @@ afs_uint32 repair_vnode_cb(afs_vnode *v, XFILE *X, void *refcon)
     v->field_mask |= F_VNODE_SDATE;
   }
   if (field_mask && !(field_mask & F_VNODE_SIZE)) {
-    if (RV) fprintf(stderr, ">>> VNODE %d has no data size (using 0)\n");
-    v->size = 0;
+    if (RV) fprintf(stderr, ">>> VNODE %d has no data size (using 0)\n",
+            v->vnode);
+    set64(v->size, 0);
     v->field_mask |= F_VNODE_SIZE;
   }
-  if ((field_mask & F_VNODE_DATA) && !v->size) {
+  if ((field_mask & F_VNODE_DATA) && zero64(v->size)) {
     if (RV)
       fprintf(stderr, ">>> VNODE %d has data, but size == 0 (ignoring)\n",
             v->vnode);
@@ -296,7 +298,8 @@ afs_uint32 repair_vnode_cb(afs_vnode *v, XFILE *X, void *refcon)
   if (field_mask && v->type == vDirectory && !(field_mask & F_VNODE_ACL)) {
     struct acl_accessList *acl = (struct acl_accessList *)v->acl;
     if (RV) {
-      fprintf(stderr, ">>> VNODE %d is directory but has no ACL\n");
+      fprintf(stderr, ">>> VNODE %d is directory but has no ACL\n",
+              v->vnode);
       fprintf(stderr, ">>> Will generate default ACL\n");
     }
     memset(v->acl, 0, SIZEOF_LARGEDISKVNODE - SIZEOF_SMALLDISKVNODE);
@@ -318,7 +321,7 @@ afs_uint32 repair_vnode_cb(afs_vnode *v, XFILE *X, void *refcon)
   r = DumpVNode(&repair_output, v);
   if (r) return r;
 
-  if (v->size) {
+  if (!zero64(v->size)) {
     if (r = xfseek(X, &v->d_offset)) return r;
     r = CopyVNodeData(&repair_output, X, v->size);
   } else if (v->type == vDirectory) {
@@ -327,7 +330,8 @@ afs_uint32 repair_vnode_cb(afs_vnode *v, XFILE *X, void *refcon)
     int i;
 
     if (RV) {
-      fprintf(stderr, ">>> VNODE %d is directory but has no contents\n");
+      fprintf(stderr, ">>> VNODE %d is directory but has no contents\n",
+              v->vnode);
       fprintf(stderr, ">>> Will generate deafult directory entries\n");
     }
     memset(&page, 0, sizeof(page));
