@@ -75,7 +75,10 @@ static afs_uint32 xf_FILE_do_tell(XFILE *X, u_int64 *offset)
   }
   where = ftell(F);
   if (where == -1) return errno;
-  set64(*offset, where);
+  if (sizeof(off_t) > 4)
+    mk64(*offset, where >> 32, (afs_uint32) where);
+  else
+    set64(*offset, where);
   return 0;
 }
 
@@ -84,7 +87,11 @@ static afs_uint32 xf_FILE_do_tell(XFILE *X, u_int64 *offset)
 static afs_uint32 xf_FILE_do_seek(XFILE *X, u_int64 *offset)
 {
   FILE *F = X->refcon;
-  off_t where = get64(*offset);
+  off_t where;
+  if (sizeof(off_t) > 4)
+    where = ((off_t)offset->hi) << 32 | offset->lo;
+  else
+    where = get64(*offset);
 
   if (fseek(F, where, SEEK_SET) == -1) return errno;
   return 0;

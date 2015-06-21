@@ -34,6 +34,9 @@ AFSLIBS = /usr/local/lib/afs
 ifeq ($(shell uname),Linux)
 R        = -Wl,-rpath,
 AFSLIBS  = /usr/lib/afs
+ifeq ($(shell uname -m),x86_64)
+XCFLAGS  = -D_FILE_OFFSET_BITS=64
+endif
 XLIBS    = -lresolv
 endif
 
@@ -44,9 +47,9 @@ XLDFLAGS = -L/usr/ucblib -R/usr/ucblib
 XLIBS    = -lsocket -lnsl -lucb -lresolv
 endif
 
-DEBUG      = -g
+DEBUG      = -g -W -Wall -pedantic -Wno-parentheses -Wno-implicit-function-declaration -Wno-unused-parameter
 INCLUDES   = -I/usr/local/include
-CFLAGS     = $(DEBUG) $(INCLUDES)
+CFLAGS     = $(DEBUG) $(INCLUDES) $(XCFLAGS)
 LDFLAGS    = -L. -L/usr/local/lib $(R)/usr/local/lib -L$(AFSLIBS) $(XLDFLAGS)
 
 LIBS                 = -ldumpscan -lxfiles \
