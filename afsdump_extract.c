@@ -264,7 +264,7 @@ static afs_uint32 copyfile(XFILE *in, XFILE *out, u_int64 size)
   while (!zero64(size)) {
     u_int64 copy_buf_size;
     set64(copy_buf_size, COPYBUFSIZE);
-    nr = (gt64(size, copy_buf_size)) ? COPYBUFSIZE : UINT32_MAX;
+    nr = (gt64(size, copy_buf_size)) ? COPYBUFSIZE : lo64(size);
     if (r = xfread(in, buf, nr)) return r;
     if (r = xfwrite(out, buf, nr)) return r;
     sub64_32(size, size, nr);

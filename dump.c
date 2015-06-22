@@ -222,7 +222,7 @@ afs_uint32 CopyVNodeData(XFILE *OX, XFILE *X, u_int64 size)
   while (!zero64(size)) {
     u_int64 copy_buf_size;
     set64(copy_buf_size, COPYBUFSIZE);
-    n = (gt64(size, copy_buf_size)) ? COPYBUFSIZE : UINT32_MAX;
+    n = (gt64(size, copy_buf_size)) ? COPYBUFSIZE : lo64(size);
     if (r = xfread(X, buf, n)) return r;
     if (r = xfwrite(OX, buf, n)) return r;
     sub64_32(size, size, n);
